@@ -1,31 +1,64 @@
-#include "generator.hpp"
+#include "../includes/generator.hpp"
 
-Generator::Generator(std::string filename) {
-  int var_count = 0;
+struct generator::InputData generator::readFile(std::string filename) {
+  std::ifstream inputFile;
+
   inputFile.open(filename);
 
-  inputFile >> num_processes;
-  inputFile >> arrival_mu >> arrival_sigma;
-  inputFile >> working_mu >> working_sigma;
-  inputFile >> priority_lambda;
+  struct generator::InputData in;
+  inputFile >> in.num_processes;
+  inputFile >> in.arrival_mu >> in.arrival_sigma;
+  inputFile >> in.working_mu >> in.working_sigma;
+  inputFile >> in.priority_lambda;
 
   inputFile.close();
+
+  return in;
 }
 
-std::vector<Process> Generator::getProcesses() {
-  //
-  gsl_rng *r = gsl_rng_alloc(gsl_rng_default);
+void generator::saveFile(std::string filename, std::vector<Process> processes) {
+  std::ofstream outputFile;
 
-  std::vector<Process> processes(num_processes);
+  outputFile.open(filename);
 
-  for (int i = 0; i < num_processes; i++) {
+  outputFile << processes.size() << std::endl;
+
+  for (int i = 0; i < processes.size(); i++) {
+    outputFile << std::fixed << std::setprecision(1) << processes[i].pid << " "
+               << processes[i].arrival_time << " " << processes[i].working_time
+               << " " << processes[i].priority << std::endl;
+  }
+}
+
+std::vector<Process> generator::generateProcesses(
+    struct generator::InputData in) {
+  std::vector<Process> processes;
+
+  std::default_random_engine generator;
+
+  std::normal_distribution<float> arrivalDistribution(in.arrival_mu,
+                                                      in.arrival_sigma);
+  std::normal_distribution<float> workingDistribution(in.working_mu,
+                                                      in.working_sigma);
+  std::poisson_distribution<int> priorityDistribution(in.priority_lambda);
+
+  for (int i = 0; i < in.num_processes; i++) {
     struct Process ps;
 
-    ps.process_pid = i;
-    ps.arrival_time = gsl_ran_lognormal(r, arrival_mu, arrival_sigma);
-    ps.working_time = gsl_ran_lognormal(r, working_mu, working_sigma);
-    ps.priority = gsl_ran_poisson(r, priority_lambda);
+    ps.pid = i + 1;
 
-    processes[i] = ps;
+    do {
+      ps.arrival_time = arrivalDistribution(generator);
+    } while (ps.arrival_time <= 0);
+
+    do {
+      ps.working_time = workingDistribution(generator);
+    } while (ps.working_time <= 0);
+
+    ps.priority = priorityDistribution(generator);
+
+    processes.push_back(ps);  // always push back
   }
+
+  return processes;
 }
