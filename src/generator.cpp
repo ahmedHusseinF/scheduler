@@ -45,7 +45,7 @@ std::vector<Process> generator::generateProcesses(
   for (int i = 0; i < in.num_processes; i++) {
     struct Process ps;
 
-    ps.pid = i + 1;
+    ps.pid = i + 1;  // 1 digit pid, TODO: make it 4 or 5
 
     do {
       ps.arrival_time = arrivalDistribution(generator);
